@@ -1,0 +1,10 @@
+{"namespace": "com.ricston.poc.avro",
+ "type": "record",
+ "name": "AvroPoc",
+ "fields": [
+ 	 {"name": "id", "type": "int"},
+ 	 {"name": "name", "type": ["string","null"]},
+ 	 {"name": "surname", "type": ["string","null"]},
+ 	 {"name": "age", "type": ["int","null"]}
+ ]
+}

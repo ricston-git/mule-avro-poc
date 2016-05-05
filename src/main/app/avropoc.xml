@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+
+	<flow name="readAndSerializeFileFlow" initialState="started">
+		<file:inbound-endpoint responseTimeout="10000"
+			doc:name="File" moveToDirectory="Avro-Out" path="Avro-In" />
+        <object-to-string-transformer doc:name="Object to String"/>
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+ payload map ((records) -> ({ 
+ 	id: records.id as :number,
+ 	name: records.name,
+ 	surname: records.surname,
+ 	age : records.age as :number
+ }) as :object { class: "com.ricston.poc.avro.AvroPoc"})]]></dw:set-payload>
+		</dw:transform-message>
+		<custom-transformer class="com.ricston.poc.avro.transformers.AvroSerializer"
+			doc:name="Avro Serializer" />
+		<file:outbound-endpoint path="Avro-Processed"
+			responseTimeout="10000" doc:name="File"
+			outputPattern="avropoc-example-#[server.dateTime].avro" />
+	</flow>
+
+	<flow name="readAndDeserializeFileFlow" initialState="started">
+		<file:inbound-endpoint responseTimeout="10000"
+			doc:name="File" moveToDirectory="Avro-Out" path="Avro-Processed" />
+		<custom-transformer
+			class="com.ricston.poc.avro.transformers.AvroDeserializer" doc:name="Avro Deserializer" />
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/csv
+---
+payload map ({
+    id : $.id default 0,
+    name : $.name default "",
+    surname : $.surname default "",
+    age : $.age default 0
+})]]></dw:set-payload>
+		</dw:transform-message>
+        <object-to-string-transformer doc:name="Object to String"/>
+
+		<logger level="INFO" message="#[payload]" doc:name="Logger"/>
+	</flow>
+
+</mule>
